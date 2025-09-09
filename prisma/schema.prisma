@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum DeliveryStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  DELIVERING
+  DELIVERED
+  CANCELLED
+}
+
+enum KitchenType {
+  PIZZA
+  SUSHI
+  RUSSIAN
+  BURGER
+}
+
+model User {
+  id         String     @id @default(uuid())
+  name       String
+  email      String     @unique
+  password   String
+  role       UserRole   @default(USER)
+  tokens     Token[]
+  deliveries Delivery[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@map("users")
+}
+
+
+model Partner {
+  id             String      @id @default(uuid())
+  name           String      @unique
+  timeOfDelivery Int
+  stars          Float
+  minPrice       Int
+  kitchen        KitchenType
+  image          String
+  productsFile   String?
+  products       Product[]
+  deliveries     Delivery[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@map("partners")
+}
+
+
+model Product {
+  id               String            @id @default(uuid())
+  partnerId        String
+  partner          Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  name             String
+  description      String
+  price            Float
+  image            String
+  deliveryContents DeliveryContent[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@map("products")
+}
+
+
+model Delivery {
+  id          String            @id @default(uuid())
+  userId      String?
+  user        User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  partnerId   String?
+  partner     Partner?          @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  status      DeliveryStatus    @default(PENDING)
+  totalAmount Float
+  address     String
+  phone       String
+  comment     String?
+  contents    DeliveryContent[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("deliveries")
+}
+
+
+model DeliveryContent {
+  id          String   @id @default(uuid())
+  deliveryId  String
+  delivery    Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName String
+  quantity    Int
+  price       Float
+  total       Float
+  createdAt   DateTime @default(now())
+
+  @@map("delivery_contents")
+}
+
+
+model Token {
+  id           String   @id @default(uuid())
+  refreshToken String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("tokens")
+}

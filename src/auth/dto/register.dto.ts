@@ -1,6 +1,6 @@
 import {
     IsEmail,
-    IsNotEmpty,
+    IsNotEmpty, IsOptional, IsPhoneNumber,
     IsString,
     IsStrongPassword,
     MinLength
@@ -15,6 +15,10 @@ export class RegisterDto {
     @IsNotEmpty({ message: "Имя не должно быть пустым" })
     @MinLength(2, { message: "Имя должно быть не короче 2 символов" })
     name: string;
+
+    @IsPhoneNumber("RU", {message: "Неверный формат телефона"})
+    @IsOptional()
+    phone?: string;
 
     @IsNotEmpty({ message: "Пароль не должен быть пустым" })
     @IsStrongPassword(

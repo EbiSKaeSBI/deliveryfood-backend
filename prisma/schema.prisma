@@ -34,6 +34,7 @@ model User {
   email      String     @unique
   password   String
   role       UserRole   @default(USER)
+  phone      String?
   tokens     Token[]
   deliveries Delivery[]
   createdAt  DateTime   @default(now())
@@ -41,7 +42,6 @@ model User {
 
   @@map("users")
 }
-
 
 model Partner {
   id             String      @id @default(uuid())
@@ -51,7 +51,6 @@ model Partner {
   minPrice       Int
   kitchen        KitchenType
   image          String
-  productsFile   String?
   products       Product[]
   deliveries     Delivery[]
   createdAt      DateTime    @default(now())
@@ -59,7 +58,6 @@ model Partner {
 
   @@map("partners")
 }
-
 
 model Product {
   id               String            @id @default(uuid())
@@ -75,7 +73,6 @@ model Product {
 
   @@map("products")
 }
-
 
 model Delivery {
   id          String            @id @default(uuid())
@@ -95,7 +92,6 @@ model Delivery {
   @@map("deliveries")
 }
 
-
 model DeliveryContent {
   id          String   @id @default(uuid())
   deliveryId  String
@@ -110,7 +106,6 @@ model DeliveryContent {
 
   @@map("delivery_contents")
 }
-
 
 model Token {
   id           String   @id @default(uuid())

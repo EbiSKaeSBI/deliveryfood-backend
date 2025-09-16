@@ -10,6 +10,7 @@ import * as bcrypt from 'bcryptjs';
 import { PrismaService } from "../prisma/prisma.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
+import {UserRole} from "@prisma/client";
 
 @Injectable()
 export class AuthService {
@@ -18,8 +19,8 @@ export class AuthService {
         private jwtService: JwtService
     ) {}
 
-    async register(registerDto: RegisterDto) {
-        const { email, name, password } = registerDto;
+    async register(registerDto: RegisterDto, role:UserRole = UserRole.USER) {
+        const { email, name, password, phone } = registerDto;
 
         try {
             const existingUser = await this.prisma.user.findUnique({
@@ -36,18 +37,20 @@ export class AuthService {
                 data: {
                     email: email.toLowerCase().trim(),
                     name: name.trim(),
+                    phone: phone?.trim(),
                     password: hashedPassword,
+                    role: role,
                 },
                 select: {
                     id: true,
                     email: true,
                     name: true,
+                    phone: true,
                     role: true,
                     createdAt: true,
                 },
             });
 
-            // Генерируем токены после регистрации
             const tokens = await this.generateTokens(user);
             await this.saveRefreshToken(user.id, tokens.refreshToken);
 
@@ -93,12 +96,12 @@ export class AuthService {
 
     async refreshTokens(refreshToken: string) {
         try {
-            // Проверяем валидность токена
+
             const payload = this.jwtService.verify(refreshToken, {
                 secret: process.env.JWT_REFRESH_SECRET
             });
 
-            // Проверяем существование токена в базе
+
             const tokenRecord = await this.prisma.token.findFirst({
                 where: {
                     refreshToken,
@@ -111,11 +114,11 @@ export class AuthService {
                 throw new UnauthorizedException("Недействительный refresh token");
             }
 
-            // Генерируем новые токены
+
             const user = tokenRecord.user;
             const tokens = await this.generateTokens(user);
 
-            // Обновляем refresh token в базе
+
             await this.updateRefreshToken(refreshToken, tokens.refreshToken);
 
             return {
@@ -204,6 +207,7 @@ export class AuthService {
                 id: true,
                 name: true,
                 email: true,
+                phone: true,
                 role: true,
                 createdAt: true,
             },

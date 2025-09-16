@@ -6,6 +6,7 @@ import {PassportModule} from "@nestjs/passport";
 import {JwtModule} from "@nestjs/jwt";
 import {JwtStrategy} from "./strategies/jwt.strategy";
 import {ConfigModule} from "@nestjs/config";
+import {RolesModule} from "../roles/roles.module";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import {ConfigModule} from "@nestjs/config";
           isGlobal: true,
       }),
       PrismaModule,
+      RolesModule,
       PassportModule,
       JwtModule.register({
         secret:process.env.JWT_ACCESS_SECRET,

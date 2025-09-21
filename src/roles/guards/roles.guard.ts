@@ -13,7 +13,6 @@ export class RolesGuard implements CanActivate {
             context.getHandler(),
         );
 
-        // Если роли не указаны - разрешаем доступ
         if (!requiredRoles) {
             return true;
         }
@@ -21,7 +20,7 @@ export class RolesGuard implements CanActivate {
         const request = context.switchToHttp().getRequest();
         const user = request.user;
 
-        // Проверяем что пользователь есть и имеет нужную роль
+
         if (!user || !requiredRoles.includes(user.role)) {
             throw new ForbiddenException('Недостаточно прав');
         }

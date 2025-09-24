@@ -1,4 +1,4 @@
-import {Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards} from '@nestjs/common';
+import {Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Req, UseGuards} from '@nestjs/common';
 import {AuthService} from "./auth.service";
 import {RegisterDto} from "./dto/register.dto";
 import {LoginDto} from "./dto/login.dto";
@@ -7,6 +7,7 @@ import {GetUser} from "./decorators/get-user.decorator";
 import {UserRole} from "@prisma/client";
 import {RolesGuard} from "../roles/guards/roles.guard";
 import {Roles} from "../roles/decorators/roles.decorator";
+import {UpdateProfileDto} from "./dto/update.dto";
 
 @Controller('auth')
 export class AuthController {
@@ -41,6 +42,14 @@ export class AuthController {
     getProfile(@GetUser() user: any) {
         return user
     }
+
+    @Patch("profile")
+    @UseGuards(JwtAuthGuard)
+    updateProfile(@Req() req: any, @Body() updateProfileDto: UpdateProfileDto) {
+        const userId = req.user.id
+        return this.authService.updateProfile(userId, updateProfileDto);
+    }
+
 
     @Post("register/admin")
     @UseGuards(JwtAuthGuard, RolesGuard)

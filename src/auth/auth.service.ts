@@ -3,7 +3,7 @@ import {
     Injectable,
     InternalServerErrorException,
     UnauthorizedException,
-    NotFoundException
+    NotFoundException, BadRequestException
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -11,6 +11,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import {UserRole} from "@prisma/client";
+import {UpdateProfileDto} from "./dto/update.dto";
 
 @Injectable()
 export class AuthService {
@@ -131,6 +132,97 @@ export class AuthService {
         }
     }
 
+    async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
+        const { name, phone, email, currentPassword, newPassword } = updateProfileDto;
+
+        try {
+            console.log('Updating profile for user:', userId);
+            console.log('Update data:', updateProfileDto);
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId }
+            });
+
+            if (!user) {
+                throw new NotFoundException("Пользователь не найден");
+            }
+
+            const updateData: any = {};
+
+            if (name !== undefined) {
+                updateData.name = name.trim();
+            }
+
+            if (phone !== undefined) {
+                updateData.phone = phone?.trim(); // Добавил ? на случай null/undefined
+            }
+
+            if (email !== undefined && email !== user.email) {
+                const emailExists = await this.prisma.user.findUnique({
+                    where: { email: email.toLowerCase().trim() }
+                });
+
+                if (emailExists) {
+                    throw new ConflictException("Пользователь с таким email уже существует");
+                }
+
+                updateData.email = email.toLowerCase().trim();
+            }
+
+            if (newPassword) {
+                if (!currentPassword) {
+                    throw new BadRequestException("Текущий пароль обязателен для смены пароля");
+                }
+
+                const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+                if (!isCurrentPasswordValid) {
+                    throw new UnauthorizedException("Неверный текущий пароль");
+                }
+
+                updateData.password = await this.hashPassword(newPassword);
+            }
+
+            if (Object.keys(updateData).length === 0) {
+                throw new BadRequestException("Нет данных для обновления");
+            }
+
+            const updatedUser = await this.prisma.user.update({
+                where: { id: userId },
+                data: updateData,
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    phone: true,
+                    role: true,
+                    createdAt: true,
+                },
+            });
+
+            return {
+                message: "Профиль успешно обновлен",
+                user: updatedUser
+            };
+
+        } catch (error) {
+            console.error('Error in updateProfile:', error);
+
+            if (error instanceof ConflictException ||
+                error instanceof UnauthorizedException ||
+                error instanceof BadRequestException ||
+                error instanceof NotFoundException) {
+                throw error;
+            }
+
+            // Добавим более информативное сообщение об ошибке
+            if (error.code === 'P2025') {
+                throw new NotFoundException("Пользователь не найден");
+            }
+
+            throw new InternalServerErrorException(`Ошибка обновления профиля: ${error.message}`);
+        }
+    }
+
     async validateUser(email: string, password: string): Promise<any> {
         const user = await this.prisma.user.findUnique({
             where: { email: email.toLowerCase() }
@@ -186,13 +278,17 @@ export class AuthService {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7);
 
-        await this.prisma.token.update({
-            where: { refreshToken: oldToken },
-            data: {
-                refreshToken: newToken,
-                expiresAt
-            }
-        });
+        try {
+            await this.prisma.token.update({
+                where: { refreshToken: oldToken },
+                data: {
+                    refreshToken: newToken,
+                    expiresAt
+                }
+            });
+        } catch (error) {
+            console.warn('Refresh token not found for update:', oldToken);
+        }
     }
 
     private async hashPassword(password: string): Promise<string> {

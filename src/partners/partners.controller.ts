@@ -1,4 +1,4 @@
-import {Body, Controller, Delete, Get, Param, Patch, Post, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards} from '@nestjs/common';
 import {PartnersService} from "./partners.service";
 import {JwtAuthGuard} from "../auth/guards/jwt-auth.guard";
 import {CreatePartnerDto} from "./dto/create-partner.dto";
@@ -19,8 +19,8 @@ export class PartnersController {
     }
 
     @Get()
-    findAll(){
-        return this.partnerService.findAll();
+    findAll(@Query("search") search?:string){
+        return this.partnerService.findAll(search);
     }
 
     @Get(':id')

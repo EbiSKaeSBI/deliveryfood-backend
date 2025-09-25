@@ -21,8 +21,18 @@ export class PartnersService {
         });
     }
 
-    async findAll(){
+    async findAll(search?:string){
         return this.prisma.partner.findMany({
+        where: search ? {
+            OR: [
+                {
+                    name: {
+                        contains: search,
+                        mode: "insensitive"
+                    }
+                }
+            ]
+            } : undefined,
             include: {
                 products: true,
                 deliveries: true,

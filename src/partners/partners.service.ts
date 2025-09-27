@@ -2,6 +2,13 @@ import {Injectable, NotFoundException} from '@nestjs/common';
 import {PrismaService} from "../prisma/prisma.service";
 import {CreatePartnerDto} from "./dto/create-partner.dto";
 import {UpdatePartnerDto} from "./dto/update-partner.dto";
+import {Prisma} from "@prisma/client";
+
+interface FindAllOptions {
+    search?: string;
+    page?: number;
+    limit?: number;
+}
 
 @Injectable()
 export class PartnersService {
@@ -21,24 +28,79 @@ export class PartnersService {
         });
     }
 
-    async findAll(search?:string){
-        return this.prisma.partner.findMany({
-        where: search ? {
+    async findAll({search, page = 1, limit = 9}: FindAllOptions = {}) {
+        const where: Prisma.PartnerWhereInput | undefined = search ? {
             OR: [
                 {
                     name: {
                         contains: search,
-                        mode: "insensitive"
+                        mode: "insensitive" as Prisma.QueryMode
                     }
                 }
             ]
-            } : undefined,
-            include: {
-                products: true,
-                deliveries: true,
-            },
-        });
+        } : undefined;
+
+        if (search) {
+            const partners = await this.prisma.partner.findMany({
+                where,
+                include: {
+                    products: true,
+                    deliveries: true,
+                },
+                orderBy: {
+                    name: "asc"
+                }
+            });
+            const totalCount = partners.length;
+            return {
+                data: partners,
+                pagination: {
+                    currentPage: 1,
+                    totalPage: 1,
+                    totalCount,
+                    hasNextPage: false,
+                    hasPreviousPage: false,
+                    nextPage: null,
+                    previousPage: null,
+                }
+            };
+        }
+
+        const skip = (page - 1) * limit;
+        const take = limit;
+
+        const [partners, totalCount] = await Promise.all([
+            this.prisma.partner.findMany({
+                where,
+                skip,
+                take,
+                include: {
+                    products: true,
+                    deliveries: true,
+                },
+                orderBy: {
+                    name: "asc"
+                }
+            }),
+            this.prisma.partner.count({where})
+        ]);
+        const totalPage = Math.ceil(totalCount / limit);
+        const hasNextPage = page < totalPage;
+        const hasPreviousPage = page > 1;
+        return {
+            data: partners,
+            pagination: {
+                currentPage: page,
+                totalPage,
+                totalCount,
+                hasNextPage,
+                hasPreviousPage,
+                nextPage: hasNextPage ? page + 1 : null,
+                previousPage: hasPreviousPage ? page - 1 : null,
+            }
+        };
     }
+
 
     async findOne(id: string){
         const partner = await this.prisma.partner.findUnique({

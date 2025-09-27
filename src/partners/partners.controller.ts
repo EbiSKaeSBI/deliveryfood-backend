@@ -6,6 +6,7 @@ import {UpdatePartnerDto} from './dto/update-partner.dto';
 import {RolesGuard} from "../roles/guards/roles.guard";
 import {Roles} from "../roles/decorators/roles.decorator";
 import {UserRole} from "@prisma/client";
+import {PaginationDto} from "../common/dto/pagination.dto";
 
 @Controller('partners')
 export class PartnersController {
@@ -19,8 +20,14 @@ export class PartnersController {
     }
 
     @Get()
-    findAll(@Query("search") search?:string){
-        return this.partnerService.findAll(search);
+    findAll(
+        @Query() paginationDto: PaginationDto,
+        @Query("search") search?: string){
+        return this.partnerService.findAll({
+            search,
+            page: paginationDto.page,
+            limit: paginationDto.limit,
+        });
     }
 
     @Get(':id')

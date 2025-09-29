@@ -305,6 +305,7 @@ export class AuthService {
                 email: true,
                 phone: true,
                 role: true,
+                deliveries: true,
                 createdAt: true,
             },
         });

@@ -12,7 +12,6 @@ export class DeliveriesController {
     @Post()
     @UseGuards(JwtAuthGuard)
     create(@Body() createDeliveryDto: CreateDeliveryDto, @GetUser() user: any) {
-        // Автоматически подставляем userId из аутентифицированного пользователя
         const deliveryData = {
             ...createDeliveryDto,
             userId: user.id,

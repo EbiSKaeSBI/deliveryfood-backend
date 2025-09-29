@@ -40,7 +40,7 @@ export class AuthController {
     @Get("profile")
     @UseGuards(JwtAuthGuard)
     getProfile(@GetUser() user: any) {
-        return user
+        return this.authService.getProfile(user.id);
     }
 
     @Patch("profile")

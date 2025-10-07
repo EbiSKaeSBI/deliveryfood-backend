@@ -33,8 +33,8 @@ export class AuthController {
     @Post("logout")
     @UseGuards(JwtAuthGuard)
     @HttpCode(HttpStatus.OK)
-    async logout(@Body("refreshToken") refreshToken: string) {
-        return this.authService.logout(refreshToken);
+    async logout() {
+        return this.authService.logout();
     }
 
     @Get("profile")

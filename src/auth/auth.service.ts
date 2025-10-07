@@ -20,7 +20,7 @@ export class AuthService {
         private jwtService: JwtService
     ) {}
 
-    async register(registerDto: RegisterDto, role:UserRole = UserRole.USER) {
+    async register(registerDto: RegisterDto, role: UserRole = UserRole.USER) {
         const { email, name, password, phone } = registerDto;
 
         try {
@@ -53,7 +53,6 @@ export class AuthService {
             });
 
             const tokens = await this.generateTokens(user);
-            await this.saveRefreshToken(user.id, tokens.refreshToken);
 
             return {
                 message: "Пользователь успешно зарегистрирован",
@@ -78,7 +77,6 @@ export class AuthService {
         }
 
         const tokens = await this.generateTokens(user);
-        await this.saveRefreshToken(user.id, tokens.refreshToken);
 
         return {
             message: "Успешный вход в систему",
@@ -87,11 +85,7 @@ export class AuthService {
         };
     }
 
-    async logout(refreshToken: string) {
-        await this.prisma.token.deleteMany({
-            where: { refreshToken }
-        });
-
+    async logout() {
         return { message: "Успешный выход из системы" };
     }
 
@@ -103,24 +97,24 @@ export class AuthService {
             });
 
 
-            const tokenRecord = await this.prisma.token.findFirst({
-                where: {
-                    refreshToken,
-                    userId: payload.sub
+            const user = await this.prisma.user.findUnique({
+                where: { id: payload.sub },
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    phone: true,
+                    role: true,
+                    createdAt: true,
                 },
-                include: { user: true }
             });
 
-            if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
-                throw new UnauthorizedException("Недействительный refresh token");
+            if (!user) {
+                throw new UnauthorizedException("Пользователь не найден");
             }
 
-
-            const user = tokenRecord.user;
+            // Генерируем новые токены
             const tokens = await this.generateTokens(user);
-
-
-            await this.updateRefreshToken(refreshToken, tokens.refreshToken);
 
             return {
                 message: "Токены успешно обновлены",
@@ -154,7 +148,7 @@ export class AuthService {
             }
 
             if (phone !== undefined) {
-                updateData.phone = phone?.trim(); // Добавил ? на случай null/undefined
+                updateData.phone = phone?.trim();
             }
 
             if (email !== undefined && email !== user.email) {
@@ -214,7 +208,6 @@ export class AuthService {
                 throw error;
             }
 
-            // Добавим более информативное сообщение об ошибке
             if (error.code === 'P2025') {
                 throw new NotFoundException("Пользователь не найден");
             }
@@ -245,7 +238,7 @@ export class AuthService {
         const [accessToken, refreshToken] = await Promise.all([
             this.jwtService.signAsync(payload, {
                 secret: process.env.JWT_ACCESS_SECRET,
-                expiresIn: '15m'
+                expiresIn: '1d'
             }),
             this.jwtService.signAsync(payload, {
                 secret: process.env.JWT_REFRESH_SECRET,
@@ -254,41 +247,6 @@ export class AuthService {
         ]);
 
         return { accessToken, refreshToken };
-    }
-
-    private async saveRefreshToken(userId: string, refreshToken: string) {
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 дней
-
-        await this.prisma.token.deleteMany({
-            where: { userId }
-        })
-
-
-        await this.prisma.token.create({
-            data: {
-                refreshToken,
-                userId,
-                expiresAt
-            }
-        });
-    }
-
-    private async updateRefreshToken(oldToken: string, newToken: string) {
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
-
-        try {
-            await this.prisma.token.update({
-                where: { refreshToken: oldToken },
-                data: {
-                    refreshToken: newToken,
-                    expiresAt
-                }
-            });
-        } catch (error) {
-            console.warn('Refresh token not found for update:', oldToken);
-        }
     }
 
     private async hashPassword(password: string): Promise<string> {
@@ -319,5 +277,28 @@ export class AuthService {
 
     async getProfile(userId: string) {
         return this.findById(userId);
+    }
+
+
+    async verifyAccessToken(token: string) {
+        try {
+            const payload = this.jwtService.verify(token, {
+                secret: process.env.JWT_ACCESS_SECRET
+            });
+
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: payload.sub },
+                select: { id: true, email: true, role: true }
+            });
+
+            if (!user) {
+                throw new UnauthorizedException("Пользователь не найден");
+            }
+
+            return payload;
+        } catch (error) {
+            throw new UnauthorizedException("Недействительный access token");
+        }
     }
 }

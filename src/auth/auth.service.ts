@@ -130,8 +130,7 @@ export class AuthService {
         const { name, phone, email, currentPassword, newPassword } = updateProfileDto;
 
         try {
-            console.log('Updating profile for user:', userId);
-            console.log('Update data:', updateProfileDto);
+
 
             const user = await this.prisma.user.findUnique({
                 where: { id: userId }
@@ -143,15 +142,17 @@ export class AuthService {
 
             const updateData: any = {};
 
-            if (name !== undefined) {
+            if (name !== "") {
                 updateData.name = name.trim();
             }
 
-            if (phone !== undefined) {
+
+
+            if (phone !== "") {
                 updateData.phone = phone?.trim();
             }
 
-            if (email !== undefined && email !== user.email) {
+            if (email !== "" && email !== user.email) {
                 const emailExists = await this.prisma.user.findUnique({
                     where: { email: email.toLowerCase().trim() }
                 });
